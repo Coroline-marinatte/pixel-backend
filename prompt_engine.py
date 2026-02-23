@@ -198,15 +198,62 @@ Now, generate a prompt for the following user request:"""
 
 class ImageGenerator:
     def __init__(self):
-        self.api_url = "https://image.pollinations.ai/prompt"
-
+        self.api_key = Config.MODELSCOPE_API_KEY
+        self.base_url = "https://api-inference.modelscope.cn/"
+        self.model = "Tongyi-MAI/Z-Image-Turbo"
 
     def generate_image(self, prompt, width=1024, height=576):
-        import urllib.parse
-        encoded_prompt = urllib.parse.quote(prompt)
-        image_url = f"{self.api_url}/{encoded_prompt}?width={width}&height={height}&nologo=true"
-        return {
-            'success': True,
-            'message': 'Image generation successful',
-            'image_url': image_url
+        import requests, time, json
+
+        if not self.api_key:
+            return {'success': False, 'message': 'ModelScope API key not set', 'image_url': None}
+
+        # 公共请求头
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
         }
+
+        # 发起异步生成请求
+        async_headers = {**headers, "X-ModelScope-Async-Mode": "true"}
+        payload = {
+            "model": self.model,
+            "prompt": prompt
+        }
+
+        try:
+            # 提交任务
+            response = requests.post(
+                f"{self.base_url}v1/images/generations",
+                headers=async_headers,
+                data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                timeout=30
+            )
+            response.raise_for_status()
+            task_id = response.json()["task_id"]
+
+            # 轮询任务状态
+            poll_headers = {**headers, "X-ModelScope-Task-Type": "image_generation"}
+            max_attempts = 60  # 最多等5分钟 (60 * 5秒)
+            for _ in range(max_attempts):
+                time.sleep(5)
+                poll_resp = requests.get(
+                    f"{self.base_url}v1/tasks/{task_id}",
+                    headers=poll_headers,
+                    timeout=30
+                )
+                poll_resp.raise_for_status()
+                data = poll_resp.json()
+
+                if data["task_status"] == "SUCCEED":
+                    image_url = data["output_images"][0]  # 获取图片URL
+                    return {'success': True, 'image_url': image_url}
+                elif data["task_status"] == "FAILED":
+                    return {'success': False, 'message': 'Image generation failed on ModelScope', 'image_url': None}
+                # 其他状态（PENDING/RUNNING）继续轮询
+
+            # 超时
+            return {'success': False, 'message': 'Image generation timeout', 'image_url': None}
+
+        except Exception as e:
+            return {'success': False, 'message': f'Generation error: {str(e)}', 'image_url': None}

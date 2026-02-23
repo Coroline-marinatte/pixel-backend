@@ -18,9 +18,8 @@ class Config:
     OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'meta-llama/llama-3.3-70b-instruct:free')  # 默认用 Llama 3.3
 
     # 图像生成API配置（可选：豆包、即梦等）
-    IMAGE_API_KEY = os.getenv('IMAGE_API_KEY', '')
-    IMAGE_API_URL = os.getenv('IMAGE_API_URL', 'https://pollinations-ai.com/image-generation/')
-
+    MODELSCOPE_API_KEY = os.getenv('MODELSCOPE_API_KEY', '')
+    IMAGEROUTER_API_URL = 'https://api.imagerouter.io/v1/openai/images/generations'
     # 系统提示词模板
     SYSTEM_PROMPT = """你是一位专业的像素游戏美术概念设计师，精通2D横版游戏背景设计。
 
