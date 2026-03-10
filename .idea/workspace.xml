@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="83eead32-5b9c-4fa8-bfe9-f176672910ce" name="更改" comment="第一版，使用了优化提示词，但图片生成有问题">
+    <list default="true" id="83eead32-5b9c-4fa8-bfe9-f176672910ce" name="更改" comment="第二版，模型限制不能调整生成图片的尺寸">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/prompt_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/prompt_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -68,11 +68,20 @@
       <option name="project" value="LOCAL" />
       <updated>1771776517119</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="第二版，模型限制不能调整生成图片的尺寸">
+      <option name="closed" value="true" />
+      <created>1771841577167</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1771841577167</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="第一版，使用了优化提示词，但图片生成有问题" />
-    <option name="LAST_COMMIT_MESSAGE" value="第一版，使用了优化提示词，但图片生成有问题" />
+    <MESSAGE value="第二版，模型限制不能调整生成图片的尺寸" />
+    <option name="LAST_COMMIT_MESSAGE" value="第二版，模型限制不能调整生成图片的尺寸" />
   </component>
 </project>

@@ -33,18 +33,19 @@ class PromptOptimizer:
         self.model_name = Config.OPENROUTER_MODEL
 
     def generate_prompt_directly(self, user_input, user_options=None):
-        """直接调用AI生成完整的像素背景提示词"""
+        """直接调用AI生成完整的像素背景提示词，返回 (prompt, used_fallback)"""
         logger.info("=== generate_prompt_directly 开始执行 ===")
         logger.info(f"user_input 类型: {type(user_input)}, 内容: {repr(user_input[:50])}")
         logger.info(f"API密钥是否存在: {bool(self.api_key)}")
         if self.api_key:
             logger.info(f"API密钥前4位: {self.api_key[:4]}...")
 
+        # 无 API 密钥时直接返回 fallback
         if not self.api_key:
             logger.error("OpenRouter API key is not set.")
-            fallback = self._generate_fallback_prompt(user_input)
+            fallback = self._generate_fallback_prompt(user_input, user_options)
             logger.info(f"返回 fallback (无 API key)，类型: {type(fallback)}")
-            return fallback
+            return (fallback, True)
 
         # 构建系统提示词
         system_prompt = (
@@ -74,15 +75,14 @@ Describe the primary light source, shadow direction, and overall mood. Make it e
 **Output:** Only output the final prompt itself, following the above structure exactly. Do not add any explanations, comments, or extra text. The prompt must be in English.
 
 Here is an example of a good prompt (do not copy it, just use it as a style reference):
-[Example of a well-structured prompt:
+[
 Foreground: a simple wooden stool with a ceramic bowl (slightly blurred for depth).
 Mid-ground: a sunken fire pit with a cold kettle; a traditional Lusheng (reed pipe) against the wall; a mud-stained wooden loom; shelves holding ritual masks and ancient songbooks.
 Background: wooden walls with a small window letting in dim overcast light, and a doorway to another dark room.
 Lighting: soft, directional light from the window, with faint ember glow from the fire pit. Mood: solemn, quiet, nostalgic.
 Art style: pixel art, side view, 16:9, muted earthy palette, clean composition, no clutter.]
 
-Now, generate a prompt for the following user request:"""
-        )
+Now, generate a prompt for the following user request:""")
         logger.info("system_prompt 初始构建完成")
 
         options = user_options or {}
@@ -125,7 +125,6 @@ Now, generate a prompt for the following user request:"""
             json_data = json.dumps(data, ensure_ascii=False).encode('utf-8')
             logger.info(f"JSON 序列化完成，长度: {len(json_data)} 字节")
 
-            # 打印请求的简要信息（隐藏密钥）
             safe_headers = {k: v for k, v in headers.items() if k != 'Authorization'}
             logger.info(f"请求 URL: {self.api_url}/chat/completions")
             logger.info(f"请求头: {safe_headers}")
@@ -134,7 +133,7 @@ Now, generate a prompt for the following user request:"""
                 f"{self.api_url}/chat/completions",
                 headers=headers,
                 data=json_data,
-                timeout=30
+                timeout=120
             )
             logger.info(f"请求完成，状态码: {response.status_code}")
 
@@ -144,19 +143,20 @@ Now, generate a prompt for the following user request:"""
                 logger.info("响应 JSON 解析成功")
                 final_prompt = result['choices'][0]['message']['content']
                 logger.info(f"最终提示词类型: {type(final_prompt)}, 长度: {len(final_prompt)}")
-                return final_prompt
+                # 成功 → 未使用降级
+                return (final_prompt, False)
             else:
                 logger.error(f"API 请求失败，状态码: {response.status_code}")
                 logger.error(f"响应内容: {response.text[:500]}")
-                fallback = self._generate_fallback_prompt(user_input)
+                fallback = self._generate_fallback_prompt(user_input, user_options)
                 logger.info(f"返回 fallback (API 错误)，类型: {type(fallback)}")
-                return fallback
+                return (fallback, True)
 
         except Exception as e:
             logger.error(f"发生异常: {str(e)}", exc_info=True)
-            fallback = self._generate_fallback_prompt(user_input)
+            fallback = self._generate_fallback_prompt(user_input, user_options)
             logger.info(f"返回 fallback (异常)，类型: {type(fallback)}")
-            return fallback
+            return (fallback, True)
 
     def _generate_fallback_prompt(self, user_input, user_options=None):
         """降级规则引擎：当API不可用时，使用用户选项生成简单但可用的提示词"""
@@ -176,13 +176,14 @@ Now, generate a prompt for the following user request:"""
     Pixel art style, simplified details, large color blocks."""
 
     def analyze_scene(self, user_input, user_options=None):
-        """兼容旧接口：直接返回提示词（不再是结构化数据）"""
+        """兼容旧接口：返回包含prompt和used_fallback的字典"""
         logger.info(f"analyze_scene 被调用，user_input: {repr(user_input[:50])}")
-        prompt = self.generate_prompt_directly(user_input, user_options)
-        logger.info(f"generate_prompt_directly 返回的 prompt 类型: {type(prompt)}")
+        prompt, used_fallback = self.generate_prompt_directly(user_input, user_options)
+        logger.info(f"generate_prompt_directly 返回的 prompt 类型: {type(prompt)}, used_fallback: {used_fallback}")
         return {
             'success': True,
-            'prompt': prompt
+            'prompt': prompt,
+            'used_fallback': used_fallback
         }
 
     def _get_art_style(self, style):
@@ -208,13 +209,11 @@ class ImageGenerator:
         if not self.api_key:
             return {'success': False, 'message': 'ModelScope API key not set', 'image_url': None}
 
-        # 公共请求头
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
-        # 发起异步生成请求
         async_headers = {**headers, "X-ModelScope-Async-Mode": "true"}
         payload = {
             "model": self.model,
@@ -222,7 +221,6 @@ class ImageGenerator:
         }
 
         try:
-            # 提交任务
             response = requests.post(
                 f"{self.base_url}v1/images/generations",
                 headers=async_headers,
@@ -232,9 +230,8 @@ class ImageGenerator:
             response.raise_for_status()
             task_id = response.json()["task_id"]
 
-            # 轮询任务状态
             poll_headers = {**headers, "X-ModelScope-Task-Type": "image_generation"}
-            max_attempts = 60  # 最多等5分钟 (60 * 5秒)
+            max_attempts = 60
             for _ in range(max_attempts):
                 time.sleep(5)
                 poll_resp = requests.get(
@@ -246,13 +243,11 @@ class ImageGenerator:
                 data = poll_resp.json()
 
                 if data["task_status"] == "SUCCEED":
-                    image_url = data["output_images"][0]  # 获取图片URL
+                    image_url = data["output_images"][0]
                     return {'success': True, 'image_url': image_url}
                 elif data["task_status"] == "FAILED":
                     return {'success': False, 'message': 'Image generation failed on ModelScope', 'image_url': None}
-                # 其他状态（PENDING/RUNNING）继续轮询
 
-            # 超时
             return {'success': False, 'message': 'Image generation timeout', 'image_url': None}
 
         except Exception as e:

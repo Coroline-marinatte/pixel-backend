@@ -21,13 +21,6 @@ print("9. 正在从 config 导入...", flush=True)
 from config import Config
 print("10. config 导入成功", flush=True)
 
-# 原来的配置代码保持不变...
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-import logging
-from prompt_engine import PromptOptimizer, ImageGenerator
-from config import Config
-
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +36,7 @@ CORS(app)
 prompt_optimizer = PromptOptimizer()
 image_generator = ImageGenerator()
 
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze_scene():
     try:
@@ -55,20 +49,13 @@ def analyze_scene():
 
         logger.info(f"收到分析请求: {repr(user_input[:50])}...")
 
-        # 调用 prompt_optimizer 的 analyze_scene 方法
         result = prompt_optimizer.analyze_scene(user_input, user_options)
-
-        # 处理 result 可能的不同类型
-        if isinstance(result, dict) and 'prompt' in result:
-            prompt_text = result['prompt']
-        else:
-            # 如果返回的是字符串（比如降级时）
-            prompt_text = result
 
         return jsonify({
             'success': True,
             'message': '提示词生成成功',
-            'prompt': prompt_text
+            'prompt': result['prompt'],
+            'used_fallback': result.get('used_fallback', False)
         })
 
     except Exception as e:
@@ -78,6 +65,7 @@ def analyze_scene():
             'message': f'服务器错误: {str(e)}',
             'prompt': None
         }), 500
+
 
 @app.route('/api/generate', methods=['POST'])
 def generate_image():
@@ -89,7 +77,7 @@ def generate_image():
         if 'scene_desc' in data:
             user_input = data['scene_desc']
             user_options = data.get('options', {})
-            prompt = prompt_optimizer.generate_prompt_directly(user_input, user_options)
+            prompt, _ = prompt_optimizer.generate_prompt_directly(user_input, user_options)
         elif 'prompt' in data:
             prompt = data['prompt']
         else:
@@ -116,21 +104,64 @@ def generate_image():
         logger.error(f"图像生成出错: {str(e)}")
         return jsonify({'success': False, 'message': f'生成失败: {str(e)}'}), 500
 
+
 @app.route('/api/test', methods=['POST'])
 def test_prompt():
     data = request.get_json()
     user_input = data.get('scene_desc', '测试场景')
     user_options = data.get('options', {})
-    prompt = prompt_optimizer.generate_prompt_directly(user_input, user_options)
+    prompt, _ = prompt_optimizer.generate_prompt_directly(user_input, user_options)
     return jsonify({'input': user_input, 'prompt': prompt})
+
 
 @app.route('/')
 def serve_frontend():
     return send_from_directory('.', 'index.html')
+
 
 if __name__ == '__main__':
     logger.info(f"启动像素背景生成器API服务器，端口: {Config.PORT}")
     app.run(
         host=Config.HOST,
         port=Config.PORT,
-        debug=Config.DEBUG)
+        debug=Config.DEBUG
+    )
+@app.route('/api/stitch', methods=['POST'])
+def stitch_images():
+    try:
+        data = request.get_json()
+        image_urls = data.get('image_urls', [])
+        if not image_urls:
+            return jsonify({'success': False, 'message': 'No images provided'}), 400
+
+        from PIL import Image
+        import requests
+        from io import BytesIO
+
+        images = []
+        for url in image_urls:
+            resp = requests.get(url, timeout=30)
+            img = Image.open(BytesIO(resp.content))
+            images.append(img)
+
+        # 计算总宽度和最大高度
+        total_width = sum(img.width for img in images)
+        max_height = max(img.height for img in images)
+
+        # 创建新画布
+        new_img = Image.new('RGB', (total_width, max_height))
+        x_offset = 0
+        for img in images:
+            new_img.paste(img, (x_offset, 0))
+            x_offset += img.width
+
+        # 保存到 static 目录
+        import uuid
+        filename = f"stitch_{uuid.uuid4().hex}.png"
+        filepath = os.path.join('static', filename)
+        new_img.save(filepath)
+
+        image_url = f"http://localhost:5000/static/{filename}"
+        return jsonify({'success': True, 'image_url': image_url})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
