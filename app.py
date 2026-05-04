@@ -21,6 +21,14 @@ print("9. 正在从 config 导入...", flush=True)
 from config import Config
 print("10. config 导入成功", flush=True)
 
+print("11. 正在导入图片处理相关库...", flush=True)
+import os
+import uuid
+from PIL import Image
+import requests
+from io import BytesIO
+print("12. 图片处理库导入成功", flush=True)
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -113,6 +121,49 @@ def test_prompt():
     prompt, _ = prompt_optimizer.generate_prompt_directly(user_input, user_options)
     return jsonify({'input': user_input, 'prompt': prompt})
 
+@app.route('/api/stitch', methods=['POST'])
+def stitch_images():
+    """
+    接收一组图片URL，水平拼接成一张大图，返回新图片的URL
+    """
+    try:
+        data = request.get_json()
+        image_urls = data.get('image_urls', [])
+        if not image_urls:
+            return jsonify({'success': False, 'message': 'No images provided'}), 400
+
+        images = []
+        for url in image_urls:
+            resp = requests.get(url, timeout=30)
+            img = Image.open(BytesIO(resp.content))
+            images.append(img)
+
+        # 计算总宽度和最大高度
+        total_width = sum(img.width for img in images)
+        max_height = max(img.height for img in images)
+
+        # 创建新画布（白色背景，可改为透明背景，此处用RGB）
+        new_img = Image.new('RGB', (total_width, max_height), color=(255, 255, 255))
+        x_offset = 0
+        for img in images:
+            new_img.paste(img, (x_offset, 0))
+            x_offset += img.width
+
+        # 保存到 static 目录（确保目录存在）
+        static_dir = os.path.join(os.path.dirname(__file__), 'static')
+        os.makedirs(static_dir, exist_ok=True)
+        filename = f"stitch_{uuid.uuid4().hex}.png"
+        filepath = os.path.join(static_dir, filename)
+        new_img.save(filepath)
+
+        # 返回可访问的URL（注意：如果部署到生产环境，需根据实际域名调整）
+        image_url = f"http://localhost:{Config.PORT}/static/{filename}"
+        return jsonify({'success': True, 'image_url': image_url})
+
+    except Exception as e:
+        logger.error(f"图片拼接失败: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @app.route('/')
 def serve_frontend():
@@ -165,3 +216,4 @@ def stitch_images():
         return jsonify({'success': True, 'image_url': image_url})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+

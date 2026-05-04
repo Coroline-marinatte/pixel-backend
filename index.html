@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能像素背景生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e6e6e6;
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(25, 25, 35, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d4059 0%, #1a1a2e 100%);
+            padding: 30px;
+            text-align: center;
+            border-bottom: 2px solid #00adb5;
+        }
+
+        .header h1 {
+            color: #00adb5;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            color: #8f8f8f;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            background: rgba(30, 30, 40, 0.8);
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 173, 181, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #00adb5;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        textarea, select, input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid rgba(0, 173, 181, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus, select:focus, input:focus {
+            outline: none;
+            border-color: #00adb5;
+            box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.2);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .option-card {
+            background: rgba(40, 40, 50, 0.7);
+            border: 1px solid rgba(0, 173, 181, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option-card:hover {
+            border-color: #00adb5;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .option-card.selected {
+            border-color: #00adb5;
+            background: rgba(0, 173, 181, 0.1);
+        }
+
+        .option-card h4 {
+            color: #00adb5;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .option-card p {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00adb5 0%, #00878f 100%);
+            color: white;
+            flex: 2;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #00b8c0 0%, #0099a3 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 173, 181, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(70, 70, 90, 0.8);
+            color: #e6e6e6;
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(90, 90, 110, 0.9);
+        }
+
+        .output-section {
+            background: rgba(20, 20, 30, 0.95);
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            border: 1px solid rgba(0, 173, 181, 0.2);
+            display: none;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .output-title {
+            color: #00adb5;
+            font-size: 1.3rem;
+        }
+
+        .output-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .output-actions button {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+        }
+
+        .prompt-output {
+            background: rgba(10, 10, 20, 0.9);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        /* 图片显示区域样式 */
+        .image-result {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .image-result img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 2px solid #00adb5;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-result p {
+            margin-top: 10px;
+        }
+
+        .image-result a {
+            color: #00adb5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .image-result a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 173, 181, 0.3);
+            border-radius: 50%;
+            border-top-color: #00adb5;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hint {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(0, 173, 181, 0.2);
+            color: #00adb5;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .output-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .output-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 智能像素背景生成器</h1>
+            <p>基于专业提示词工程的游戏素材生成工具</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="sceneDesc">场景描述（详细描述你想要的游戏场景）</label>
+                    <textarea id="sceneDesc" placeholder="例如：洪水后寂静的侗寨街道，木屋倾斜，泥泞遍地，远处鼓楼在薄雾中若隐若现..."></textarea>
+                    <div class="hint">建议包含：环境氛围、关键物体、光照条件、色彩感觉</div>
+                </div>
+
+                <!-- 关键叙事元素（保留在外面） -->
+                <div class="form-group">
+                    <label for="narrativeElements">关键叙事元素（可选，逗号分隔）</label>
+                    <input type="text" id="narrativeElements" placeholder="例如：倒下的路牌, 褪色的海报, 熄灭的路灯, 破损的玩具...">
+                </div>
+
+                <!-- 高级选项折叠面板 -->
+                <details style="margin-bottom: 25px; background: rgba(40,40,50,0.3); border-radius: 8px; padding: 10px;">
+                    <summary style="color: #00adb5; cursor: pointer; font-weight: 600; outline: none; padding: 5px;">
+                        ⚙️ 高级选项（AI 会自动分析，仅在降级时建议手动调整）
+                    </summary>
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(30,30,40,0.5); border-radius: 6px;">
+                        <!-- 游戏风格选择 -->
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label for="gameStyle">游戏风格（降级备用）</label>
+                            <select id="gameStyle">
+                                <option value="retro">复古像素风 (16-bit Retro)</option>
+                                <option value="modern">现代像素艺术 (Modern Pixel Art)</option>
+                                <option value="lowpoly">低多边形风格 (Low-Poly Style)</option>
+                                <option value="rpg">日式RPG风格 (JRPG Style)</option>
+                                <option value="indie">独立游戏风格 (Indie Game Style)</option>
+                            </select>
+                        </div>
+
+                        <!-- 氛围色调选择 -->
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label>氛围色调（降级备用）</label>
+                            <div class="options-grid" id="colorPalette">
+                                <div class="option-card" data-value="somber">
+                                    <h4>沉郁自然</h4>
+                                    <p>暗绿、灰褐、暗蓝 - 适合废墟、雨林、废弃场景</p>
+                                </div>
+                                <div class="option-card selected" data-value="warm">
+                                    <h4>温暖怀旧</h4>
+                                    <p>暖棕、暗黄、赭石 - 适合室内、家园、黄昏场景</p>
+                                </div>
+                                <div class="option-card" data-value="cool">
+                                    <h4>冷峻科幻</h4>
+                                    <p>青蓝、金属灰、紫调 - 适合科幻、实验室、未来场景</p>
+                                </div>
+                                <div class="option-card" data-value="mystical">
+                                    <h4>神秘奇幻</h4>
+                                    <p>暗紫、深蓝、幽绿 - 适合魔法、神殿、幻想场景</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 光照条件 -->
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="lighting">光照条件（降级备用）</label>
+                            <select id="lighting">
+                                <option value="overcast">阴天漫射光 (Overcast)</option>
+                                <option value="directional">方向性光源 (Directional Light)</option>
+                                <option value="moonlight">月光照明 (Moonlight)</option>
+                                <option value="sunset">黄昏斜阳 (Sunset)</option>
+                                <option value="artificial">人造光源 (Artificial Light)</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="generateSmartPrompt()">✨ 智能生成提示词</button>
+                    <button class="btn-secondary" onclick="fillExample()">📋 填充示例</button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在智能分析场景，生成优化提示词...</p>
+            </div>
+
+            <div class="output-section" id="outputSection">
+                <div class="output-header">
+                    <div class="output-title">🎨 优化后的提示词</div>
+                    <div class="output-actions">
+                        <button class="btn-secondary" onclick="copyToClipboard()">📋 复制到剪贴板</button>
+                        <button class="btn-primary" onclick="generateFullImage()">🎨 生成图片</button>
+                    </div>
+                </div>
+
+                <!-- 降级警告条（默认隐藏） -->
+                <div id="fallbackWarning" style="display:none; background:#ff9800; color:#fff; padding:10px; border-radius:6px; margin-bottom:15px;">
+                    ⚠️ 当前使用了降级规则，因为 AI 服务暂时不可用。您可以调整下方的高级选项后重新生成。
+                </div>
+
+                <div class="prompt-output" id="promptOutput"></div>
+
+                <!-- 图片显示区域 -->
+                <div class="image-result" id="imageResult">
+                    <img id="generatedImage" src="" alt="生成的像素背景">
+                    <p>
+                        <a id="imageDownloadLink" href="#" download="pixel_background.png">⬇️ 下载图片</a>
+                    </p>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <span class="tag">像素艺术</span>
+                    <span class="tag">游戏背景</span>
+                    <span class="tag">侧视图</span>
+                    <span class="tag">16:9</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置后端API地址
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        // 初始化选项卡片选择
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        async function generateSmartPrompt() {
+            const sceneDesc = document.getElementById('sceneDesc').value.trim();
+            if (!sceneDesc) {
+                alert('请先描述你想要生成的场景！');
+                return;
+            }
+
+            // 收集用户选项
+            const options = {
+                game_style: document.getElementById('gameStyle').value,
+                color_palette: document.querySelector('.option-card.selected').getAttribute('data-value'),
+                lighting: document.getElementById('lighting').value
+            };
+
+            // 显示加载
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('outputSection').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scene_desc: sceneDesc,
+                        options: options
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('promptOutput').textContent = result.prompt;
+
+                    // ===== 新增：处理降级警告 =====
+                    const fallbackWarning = document.getElementById('fallbackWarning');
+                    if (result.used_fallback) {
+                        fallbackWarning.style.display = 'block';
+                        // 可选：自动展开高级选项，方便用户调整
+                        document.querySelector('details').open = true;
+                    } else {
+                        fallbackWarning.style.display = 'none';
+                    }
+                    // ============================
+
+                    document.getElementById('outputSection').style.display = 'block';
+                    // 隐藏之前可能显示的图片
+                    document.getElementById('imageResult').style.display = 'none';
+                } else {
+                    alert('生成失败: ' + result.message);
+                }
+            } catch (error) {
+                console.error('API调用失败:', error);
+                alert('网络请求失败，请检查后端服务是否运行');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function generateFullImage() {
+            // 调试信息
+            console.log('【调试】generateFullImage 函数被点击了！');
+
+            const sceneDesc = document.getElementById('sceneDesc').value.trim();
+            console.log('【调试】用户输入的场景描述是：', sceneDesc);
+
+            if (!sceneDesc) {
+                alert('请先描述场景！');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                console.log('【调试】正在向后端发送生成图片的请求...');
+
+                const response = await fetch(`${API_BASE_URL}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scene_desc: sceneDesc,
+                        options: {
+                            game_style: document.getElementById('gameStyle').value,
+                            color_palette: document.querySelector('.option-card.selected').getAttribute('data-value'),
+                            lighting: document.getElementById('lighting').value
+                        },
+                        width: 1024,
+                        height: 576
+                    })
+                });
+
+                const result = await response.json();
+                console.log('【调试】后端返回的结果：', result);
+
+                if (result.success && result.image_url) {
+                    const img = document.getElementById('generatedImage');
+                    img.src = result.image_url;
+                    document.getElementById('imageResult').style.display = 'block';
+                    document.getElementById('imageDownloadLink').href = result.image_url;
+                    document.getElementById('outputSection').style.display = 'block';
+                    console.log('【调试】生成的图片 URL：', result.image_url);
+                } else {
+                    alert('图像生成失败: ' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('生成失败:', error);
+                alert('图像生成失败，请检查网络或后端服务');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function fillExample() {
+            document.getElementById('sceneDesc').value = "洪水后寂静的侗寨街道，木制的吊脚楼倾斜着，泥泞覆盖了石板路。水退去后留下痕迹，偶尔可见散落的日常物品。远处的鼓楼在薄雾中若隐若现，整个场景笼罩在沉郁的氛围中。";
+            document.getElementById('narrativeElements').value = "倒下的木桶, 破损的渔网, 墙上的水痕, 倾斜的路牌";
+            document.getElementById('gameStyle').value = "retro";
+            document.querySelector('.option-card[data-value="somber"]').click();
+            document.getElementById('lighting').value = "overcast";
+        }
+
+        function copyToClipboard() {
+            const text = document.getElementById('promptOutput').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ 提示词已复制到剪贴板！');
+            }).catch(err => {
+                alert('复制失败，请手动复制');
+            });
+        }
+
+        function openDoubao() {
+            const prompt = document.getElementById('promptOutput').textContent;
+            navigator.clipboard.writeText(prompt).then(() => {
+                const userChoice = confirm('📋 提示词已复制到剪贴板！\n\n是否打开豆包网站进行生成？');
+                if (userChoice) {
+                    window.open('https://www.doubao.com', '_blank');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
