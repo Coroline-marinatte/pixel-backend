@@ -1,3 +1,14 @@
+import os
+import sys
+
+# 强制设置编码（覆盖 PocketBay 的错误环境变量）
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["LC_ALL"] = "C.UTF-8"
+
+# 如果上面还不行，直接在 Python 层面强制设置
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
 import sys
 print("DEBUG: 开始导入", flush=True)
 
